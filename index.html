@@ -1,1 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scanner Presensi Informatika</title>
 
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f5f7;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      margin-top: 5px;
+      font-size: 24px;
+    }
+
+    #reader {
+      width: 100%;
+      margin: 20px auto;
+    }
+
+    #hasil {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #eef2f3;
+      min-height: 40px;
+      font-size: 18px;
+    }
+
+    .hadir {
+      color: #16803c;
+      font-weight: bold;
+    }
+
+    .gagal {
+      color: #c62828;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>📷 Scanner Presensi</h1>
+  <p>Informatika</p>
+
+  <div id="reader"></div>
+
+  <div id="hasil">
+    Arahkan kamera ke QR murid
+  </div>
+
+</div>
+
+<script>
+
+const URL_PRESENSI =
+"https://script.google.com/macros/s/AKfycbxy7Zh-_71qY-0mripIuXXtf5K_hyL5Isqub24Pc0puXHUN3A206hKRdDa9PyAWUnDP_g/exec";
+
+let sedangMemproses = false;
+
+function hasilScan(decodedText) {
+
+  if (sedangMemproses) return;
+
+  try {
+
+    const url = new URL(decodedText);
+    const id = url.searchParams.get("id");
+
+    if (!id) {
+      tampilkan("❌ QR tidak berisi ID murid.", "gagal");
+      return;
+    }
+
+    sedangMemproses = true;
+
+    tampilkan("⏳ Memproses ID: " + id, "");
+
+    // Kirim presensi ke Apps Script
+    const img = new Image();
+
+    img.onload = function() {
+      tampilkan("✅ Presensi terkirim<br><b>ID: " + id + "</b>", "hadir");
+      selesaiProses();
+    };
+
+    img.onerror = function() {
+      tampilkan("✅ Presensi terkirim<br><b>ID: " + id + "</b>", "hadir");
+      selesaiProses();
+    };
+
+    img.src =
+      URL_PRESENSI +
+      "?id=" +
+      encodeURIComponent(id) +
+      "&t=" +
+      Date.now();
+
+  } catch (error) {
+
+    tampilkan("❌ QR tidak valid.", "gagal");
+    selesaiProses();
+
+  }
+}
+
+function selesaiProses() {
+
+  setTimeout(function() {
+    sedangMemproses = false;
+
+    tampilkan(
+      "📷 Siap untuk scan murid berikutnya",
+      ""
+    );
+
+  }, 1500);
+}
+
+function tampilkan(teks, kelas) {
+
+  const hasil = document.getElementById("hasil");
+
+  hasil.innerHTML = teks;
+  hasil.className = kelas;
+}
+
+
+// Mulai scanner
+const scanner = new Html5Qrcode("reader");
+
+scanner.start(
+  { facingMode: "environment" },
+  {
+    fps: 10,
+    qrbox: {
+      width: 250,
+      height: 250
+    }
+  },
+  hasilScan
+)
+.then(() => {
+
+  tampilkan(
+    "📷 Kamera aktif. Arahkan ke QR murid.",
+    ""
+  );
+
+})
+.catch((err) => {
+
+  tampilkan(
+    "❌ Kamera tidak dapat digunakan.<br>Pastikan izin kamera diberikan.",
+    "gagal"
+  );
+
+});
+
+</script>
+
+</body>
+</html>
