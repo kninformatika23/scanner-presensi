@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,16 +10,16 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
+
     body {
       font-family: Arial, sans-serif;
       background: #f2f5f7;
       margin: 0;
       padding: 20px;
-      text-align: center;
     }
 
     .container {
-      max-width: 500px;
+      max-width: 650px;
       margin: auto;
       background: white;
       padding: 20px;
@@ -27,8 +28,15 @@
     }
 
     h1 {
+      text-align: center;
       margin-top: 5px;
       font-size: 24px;
+    }
+
+    .subjudul {
+      text-align: center;
+      color: #666;
+      margin-bottom: 20px;
     }
 
     #reader {
@@ -43,6 +51,7 @@
       background: #eef2f3;
       min-height: 40px;
       font-size: 18px;
+      text-align: center;
     }
 
     .hadir {
@@ -60,18 +69,150 @@
       font-weight: bold;
     }
 
+    .panel {
+      margin-top: 30px;
+      border-top: 2px solid #eee;
+      padding-top: 20px;
+    }
+
+    .panel h2 {
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+
+    select {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-bottom: 15px;
+    }
+
+    .murid {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: #fafafa;
+    }
+
+    .murid-info {
+      margin-bottom: 8px;
+    }
+
+    .murid-nama {
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .murid-id {
+      font-size: 13px;
+      color: #777;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+
+    .status-hadir {
+      background: #dff5e7;
+      color: #16803c;
+    }
+
+    .status-izin {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-sakit {
+      background: #ffe5cc;
+      color: #a05200;
+    }
+
+    .status-alpa {
+      background: #f8d7da;
+      color: #842029;
+    }
+
+    .status-belum {
+      background: #e9ecef;
+      color: #555;
+    }
+
+    .manual-control {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .manual-control select {
+      flex: 1;
+      margin: 0;
+      padding: 9px;
+      font-size: 14px;
+    }
+
+    .btn-simpan {
+      border: none;
+      border-radius: 8px;
+      padding: 9px 14px;
+      background: #333;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-simpan:hover {
+      opacity: 0.85;
+    }
+
+    .btn-simpan:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    .kosong {
+      text-align: center;
+      color: #777;
+      padding: 20px;
+    }
+
+    .loading {
+      text-align: center;
+      color: #777;
+      padding: 15px;
+    }
+
     #pengirim {
       display: none;
     }
+
   </style>
+
 </head>
 
+
 <body>
+
 
 <div class="container">
 
   <h1>📷 Scanner Presensi</h1>
-  <p>Informatika</p>
+
+  <div class="subjudul">
+    Informatika
+  </div>
+
+
+  <!-- ======================================
+       SCANNER QR
+       ====================================== -->
 
   <div id="reader"></div>
 
@@ -79,17 +220,437 @@
     Arahkan kamera ke QR murid
   </div>
 
-  <iframe id="pengirim" name="pengirim"></iframe>
+
+  <!-- ======================================
+       PANEL MANUAL
+       ====================================== -->
+
+  <div class="panel">
+
+    <h2>📋 Presensi Manual</h2>
+
+    <select id="pilihKelas" onchange="tampilkanMurid()">
+
+      <option value="">
+        Pilih kelas
+      </option>
+
+      <option value="8-1">
+        Kelas 8-1
+      </option>
+
+      <option value="8-2">
+        Kelas 8-2
+      </option>
+
+      <option value="8-3">
+        Kelas 8-3
+      </option>
+
+    </select>
+
+
+    <div id="daftarMurid">
+
+      <div class="kosong">
+        Pilih kelas terlebih dahulu.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- iframe untuk POST -->
+  <iframe
+    id="pengirim"
+    name="pengirim">
+  </iframe>
+
 
 </div>
 
 
 <script>
 
+
+// ==========================================
+// URL GOOGLE APPS SCRIPT
+// ==========================================
+
 const URL_PRESENSI =
 "https://script.google.com/macros/s/AKfycbxy7Zh-_71qY-0mripIuXXtf5K_hyL5Isqub24Pc0puXHUN3A206hKRdDa9PyAWUnDP_g/exec";
 
+
 let sedangMemproses = false;
+
+let daftarSemuaMurid = [];
+
+let statusHariIni = {};
+
+
+// ==========================================
+// AMBIL DATA MURID
+// ==========================================
+
+async function ambilDataMurid() {
+
+  try {
+
+    const response =
+      await fetch(
+        URL_PRESENSI + "?aksi=dataMurid"
+      );
+
+    daftarSemuaMurid =
+      await response.json();
+
+    console.log(
+      "Data murid:",
+      daftarSemuaMurid
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    document.getElementById(
+      "daftarMurid"
+    ).innerHTML =
+
+      '<div class="kosong">' +
+      '❌ Gagal mengambil data murid.' +
+      '</div>';
+
+  }
+
+}
+
+
+// ==========================================
+// AMBIL STATUS PRESENSI HARI INI
+// ==========================================
+
+async function ambilStatusHariIni() {
+
+  try {
+
+    const response =
+      await fetch(
+        URL_PRESENSI + "?aksi=statusHariIni"
+      );
+
+    statusHariIni =
+      await response.json();
+
+    console.log(
+      "Status hari ini:",
+      statusHariIni
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    statusHariIni = {};
+
+  }
+
+}
+
+
+// ==========================================
+// TAMPILKAN MURID SESUAI KELAS
+// ==========================================
+
+function tampilkanMurid() {
+
+  const kelas =
+    document.getElementById(
+      "pilihKelas"
+    ).value;
+
+  const container =
+    document.getElementById(
+      "daftarMurid"
+    );
+
+
+  if (!kelas) {
+
+    container.innerHTML =
+      '<div class="kosong">' +
+      'Pilih kelas terlebih dahulu.' +
+      '</div>';
+
+    return;
+
+  }
+
+
+  const murid =
+    daftarSemuaMurid.filter(
+      function(item) {
+
+        return item.kelas === kelas;
+
+      }
+    );
+
+
+  if (murid.length === 0) {
+
+    container.innerHTML =
+      '<div class="kosong">' +
+      'Tidak ada data murid.' +
+      '</div>';
+
+    return;
+
+  }
+
+
+  let html = "";
+
+
+  murid.forEach(
+    function(item) {
+
+      const status =
+        statusHariIni[item.id] ||
+        "BELUM";
+
+
+      let statusClass =
+        "status-belum";
+
+
+      let statusText =
+        "BELUM PRESENSI";
+
+
+      if (status === "HADIR") {
+
+        statusClass =
+          "status-hadir";
+
+        statusText =
+          "HADIR";
+
+      }
+
+      else if (status === "IZIN") {
+
+        statusClass =
+          "status-izin";
+
+        statusText =
+          "IZIN";
+
+      }
+
+      else if (status === "SAKIT") {
+
+        statusClass =
+          "status-sakit";
+
+        statusText =
+          "SAKIT";
+
+      }
+
+      else if (status === "ALPA") {
+
+        statusClass =
+          "status-alpa";
+
+        statusText =
+          "ALPA";
+
+      }
+
+
+      html += `
+
+        <div class="murid">
+
+          <div class="murid-info">
+
+            <div class="murid-nama">
+              ${item.absen}. ${item.nama}
+            </div>
+
+            <div class="murid-id">
+              ID: ${item.id}
+            </div>
+
+            <span class="status ${statusClass}">
+              ${statusText}
+            </span>
+
+          </div>
+
+
+          ${
+            status === "BELUM"
+
+            ?
+
+            `
+            <div class="manual-control">
+
+              <select id="status-${item.id}">
+
+                <option value="">
+                  Pilih status
+                </option>
+
+                <option value="IZIN">
+                  IZIN
+                </option>
+
+                <option value="SAKIT">
+                  SAKIT
+                </option>
+
+                <option value="ALPA">
+                  ALPA
+                </option>
+
+              </select>
+
+
+              <button
+                class="btn-simpan"
+                onclick="simpanManual('${item.id}')">
+
+                Simpan
+
+              </button>
+
+            </div>
+            `
+
+            :
+
+            ""
+
+          }
+
+        </div>
+
+      `;
+
+    }
+  );
+
+
+  container.innerHTML = html;
+
+}
+
+
+// ==========================================
+// SIMPAN PRESENSI MANUAL
+// ==========================================
+
+function simpanManual(idMurid) {
+
+  const select =
+    document.getElementById(
+      "status-" + idMurid
+    );
+
+
+  const status =
+    select.value;
+
+
+  if (!status) {
+
+    alert(
+      "Pilih status terlebih dahulu."
+    );
+
+    return;
+
+  }
+
+
+  tampilkan(
+    "⏳ Menyimpan presensi manual...",
+    "proses"
+  );
+
+
+  // ========================================
+  // KIRIM POST KE APPS SCRIPT
+  // ========================================
+
+  const form =
+    document.createElement("form");
+
+
+  form.method = "POST";
+
+  form.action = URL_PRESENSI;
+
+  form.target = "pengirim";
+
+
+  const inputID =
+    document.createElement("input");
+
+  inputID.type = "hidden";
+
+  inputID.name = "id";
+
+  inputID.value = idMurid;
+
+
+  const inputStatus =
+    document.createElement("input");
+
+  inputStatus.type = "hidden";
+
+  inputStatus.name = "status";
+
+  inputStatus.value = status;
+
+
+  form.appendChild(inputID);
+
+  form.appendChild(inputStatus);
+
+
+  document.body.appendChild(form);
+
+  form.submit();
+
+  form.remove();
+
+
+  // ========================================
+  // REFRESH STATUS
+  // ========================================
+
+  setTimeout(
+    async function() {
+
+      await ambilStatusHariIni();
+
+      tampilkanMurid();
+
+      tampilkan(
+        "✅ Presensi manual disimpan.",
+        "hadir"
+      );
+
+    },
+    1200
+  );
+
+}
 
 
 // ==========================================
@@ -98,15 +659,24 @@ let sedangMemproses = false;
 
 function hasilScan(decodedText) {
 
+
   if (sedangMemproses) {
+
     return;
+
   }
+
 
   try {
 
-    const url = new URL(decodedText);
 
-    const id = url.searchParams.get("id");
+    const url =
+      new URL(decodedText);
+
+
+    const id =
+      url.searchParams.get("id");
+
 
     if (!id) {
 
@@ -116,6 +686,7 @@ function hasilScan(decodedText) {
       );
 
       return;
+
     }
 
 
@@ -123,72 +694,111 @@ function hasilScan(decodedText) {
 
 
     tampilkan(
-      "⏳ Mencatat presensi...<br><b>" + id + "</b>",
+      "⏳ Mencatat presensi...<br><b>" +
+      id +
+      "</b>",
       "proses"
     );
 
 
-    // ==========================================
-// KIRIM ID KE GOOGLE APPS SCRIPT
-// MENGGUNAKAN POST
-// ==========================================
+    // ========================================
+    // KIRIM ID KE GOOGLE APPS SCRIPT
+    // ========================================
 
-const form = document.createElement("form");
-
-form.method = "POST";
-form.action = URL_PRESENSI;
-form.target = "pengirim";
-
-const input = document.createElement("input");
-
-input.type = "hidden";
-input.name = "id";
-input.value = id;
-
-form.appendChild(input);
-
-document.body.appendChild(form);
-
-form.submit();
-
-form.remove();
+    const form =
+      document.createElement("form");
 
 
-    // Beri waktu Apps Script memproses
-    setTimeout(function() {
+    form.method = "POST";
 
-      tampilkan(
-        "✅ PRESENSI TERKIRIM<br><b>" +
-        id +
-        "</b>",
-        "hadir"
-      );
+    form.action = URL_PRESENSI;
+
+    form.target = "pengirim";
 
 
-      // Siap scan murid berikutnya
-      setTimeout(function() {
+    const input =
+      document.createElement("input");
 
-        sedangMemproses = false;
+
+    input.type = "hidden";
+
+    input.name = "id";
+
+    input.value = id;
+
+
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+
+    form.submit();
+
+    form.remove();
+
+
+    // ========================================
+    // REFRESH STATUS SETELAH SCAN
+    // ========================================
+
+    setTimeout(
+      async function() {
+
+
+        await ambilStatusHariIni();
+
+
+        // Jika kelas yang sedang ditampilkan
+        // adalah kelas murid yang baru discan,
+        // daftar akan otomatis diperbarui.
+
+        tampilkanMurid();
+
 
         tampilkan(
-          "📷 Siap scan murid berikutnya",
-          ""
+          "✅ PRESENSI TERKIRIM<br><b>" +
+          id +
+          "</b>",
+          "hadir"
         );
 
-      }, 1500);
+
+        setTimeout(
+          function() {
+
+            sedangMemproses = false;
 
 
-    }, 1200);
+            tampilkan(
+              "📷 Siap scan murid berikutnya",
+              ""
+            );
+
+          },
+          1500
+        );
 
 
-  } catch (error) {
+      },
+      1200
+    );
+
+
+  }
+
+  catch (error) {
+
+
+    console.error(error);
+
 
     tampilkan(
       "❌ QR tidak valid.",
       "gagal"
     );
 
+
     sedangMemproses = false;
+
   }
 
 }
@@ -198,14 +808,24 @@ form.remove();
 // TAMPILKAN PESAN
 // ==========================================
 
-function tampilkan(teks, kelas) {
+function tampilkan(
+  teks,
+  kelas
+) {
 
   const hasil =
-    document.getElementById("hasil");
+    document.getElementById(
+      "hasil"
+    );
 
-  hasil.innerHTML = teks;
 
-  hasil.className = kelas;
+  hasil.innerHTML =
+    teks;
+
+
+  hasil.className =
+    kelas;
+
 }
 
 
@@ -214,46 +834,81 @@ function tampilkan(teks, kelas) {
 // ==========================================
 
 const scanner =
-  new Html5Qrcode("reader");
+  new Html5Qrcode(
+    "reader"
+  );
 
 
 scanner.start(
 
   {
-    facingMode: "environment"
+    facingMode:
+      "environment"
   },
 
   {
+
     fps: 10,
 
     qrbox: {
       width: 250,
       height: 250
     }
+
   },
 
   hasilScan
 
 )
-.then(function() {
 
-  tampilkan(
-    "📷 Kamera aktif.<br>Arahkan ke QR murid.",
-    ""
-  );
+.then(
+  function() {
 
-})
-.catch(function(error) {
+    tampilkan(
+      "📷 Kamera aktif.<br>" +
+      "Arahkan ke QR murid.",
+      ""
+    );
 
-  tampilkan(
-    "❌ Kamera tidak dapat digunakan.<br>" +
-    "Pastikan izin kamera diberikan.",
-    "gagal"
-  );
+  }
+)
 
-});
+.catch(
+  function(error) {
+
+    console.error(error);
+
+    tampilkan(
+      "❌ Kamera tidak dapat digunakan.<br>" +
+      "Pastikan izin kamera diberikan.",
+      "gagal"
+    );
+
+  }
+);
+
+
+// ==========================================
+// SAAT HALAMAN DIBUKA
+// ==========================================
+
+async function mulaiData() {
+
+  await ambilDataMurid();
+
+  await ambilStatusHariIni();
+
+  tampilkanMurid();
+
+}
+
+
+mulaiData();
+
 
 </script>
 
+
 </body>
+
 </html>
