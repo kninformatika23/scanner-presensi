@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Scanner Presensi Informatika</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -53,6 +54,15 @@
       color: #c62828;
       font-weight: bold;
     }
+
+    .proses {
+      color: #555;
+      font-weight: bold;
+    }
+
+    #pengirim {
+      display: none;
+    }
   </style>
 </head>
 
@@ -69,7 +79,10 @@
     Arahkan kamera ke QR murid
   </div>
 
+  <iframe id="pengirim" name="pengirim"></iframe>
+
 </div>
+
 
 <script>
 
@@ -78,100 +91,154 @@ const URL_PRESENSI =
 
 let sedangMemproses = false;
 
+
+// ==========================================
+// HASIL SCAN QR
+// ==========================================
+
 function hasilScan(decodedText) {
 
-  if (sedangMemproses) return;
+  if (sedangMemproses) {
+    return;
+  }
 
   try {
 
     const url = new URL(decodedText);
+
     const id = url.searchParams.get("id");
 
     if (!id) {
-      tampilkan("❌ QR tidak berisi ID murid.", "gagal");
+
+      tampilkan(
+        "❌ QR tidak berisi ID murid.",
+        "gagal"
+      );
+
       return;
     }
 
+
     sedangMemproses = true;
 
-    tampilkan("⏳ Memproses ID: " + id, "");
 
-    // Kirim presensi ke Apps Script
-    const img = new Image();
+    tampilkan(
+      "⏳ Mencatat presensi...<br><b>" + id + "</b>",
+      "proses"
+    );
 
-    img.onload = function() {
-      tampilkan("✅ Presensi terkirim<br><b>ID: " + id + "</b>", "hadir");
-      selesaiProses();
-    };
 
-    img.onerror = function() {
-      tampilkan("✅ Presensi terkirim<br><b>ID: " + id + "</b>", "hadir");
-      selesaiProses();
-    };
+    // ==========================================
+    // KIRIM ID KE GOOGLE APPS SCRIPT
+    // ==========================================
 
-    img.src =
+    const alamat =
       URL_PRESENSI +
       "?id=" +
       encodeURIComponent(id) +
+      "&scanner=1" +
       "&t=" +
       Date.now();
 
+
+    // Gunakan iframe tersembunyi
+    document.getElementById("pengirim").src = alamat;
+
+
+    // Beri waktu Apps Script memproses
+    setTimeout(function() {
+
+      tampilkan(
+        "✅ PRESENSI TERKIRIM<br><b>" +
+        id +
+        "</b>",
+        "hadir"
+      );
+
+
+      // Siap scan murid berikutnya
+      setTimeout(function() {
+
+        sedangMemproses = false;
+
+        tampilkan(
+          "📷 Siap scan murid berikutnya",
+          ""
+        );
+
+      }, 1500);
+
+
+    }, 1200);
+
+
   } catch (error) {
 
-    tampilkan("❌ QR tidak valid.", "gagal");
-    selesaiProses();
-
-  }
-}
-
-function selesaiProses() {
-
-  setTimeout(function() {
-    sedangMemproses = false;
-
     tampilkan(
-      "📷 Siap untuk scan murid berikutnya",
-      ""
+      "❌ QR tidak valid.",
+      "gagal"
     );
 
-  }, 1500);
+    sedangMemproses = false;
+  }
+
 }
+
+
+// ==========================================
+// TAMPILKAN PESAN
+// ==========================================
 
 function tampilkan(teks, kelas) {
 
-  const hasil = document.getElementById("hasil");
+  const hasil =
+    document.getElementById("hasil");
 
   hasil.innerHTML = teks;
+
   hasil.className = kelas;
 }
 
 
-// Mulai scanner
-const scanner = new Html5Qrcode("reader");
+// ==========================================
+// MULAI KAMERA
+// ==========================================
+
+const scanner =
+  new Html5Qrcode("reader");
+
 
 scanner.start(
-  { facingMode: "environment" },
+
+  {
+    facingMode: "environment"
+  },
+
   {
     fps: 10,
+
     qrbox: {
       width: 250,
       height: 250
     }
   },
+
   hasilScan
+
 )
-.then(() => {
+.then(function() {
 
   tampilkan(
-    "📷 Kamera aktif. Arahkan ke QR murid.",
+    "📷 Kamera aktif.<br>Arahkan ke QR murid.",
     ""
   );
 
 })
-.catch((err) => {
+.catch(function(error) {
 
   tampilkan(
-    "❌ Kamera tidak dapat digunakan.<br>Pastikan izin kamera diberikan.",
+    "❌ Kamera tidak dapat digunakan.<br>" +
+    "Pastikan izin kamera diberikan.",
     "gagal"
   );
 
