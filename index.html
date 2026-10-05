@@ -129,20 +129,29 @@ function hasilScan(decodedText) {
 
 
     // ==========================================
-    // KIRIM ID KE GOOGLE APPS SCRIPT
-    // ==========================================
+// KIRIM ID KE GOOGLE APPS SCRIPT
+// MENGGUNAKAN POST
+// ==========================================
 
-    const alamat =
-      URL_PRESENSI +
-      "?id=" +
-      encodeURIComponent(id) +
-      "&scanner=1" +
-      "&t=" +
-      Date.now();
+const form = document.createElement("form");
 
+form.method = "POST";
+form.action = URL_PRESENSI;
+form.target = "pengirim";
 
-    // Gunakan iframe tersembunyi
-    document.getElementById("pengirim").src = alamat;
+const input = document.createElement("input");
+
+input.type = "hidden";
+input.name = "id";
+input.value = id;
+
+form.appendChild(input);
+
+document.body.appendChild(form);
+
+form.submit();
+
+form.remove();
 
 
     // Beri waktu Apps Script memproses
